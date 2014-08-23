@@ -91,6 +91,10 @@ function tip(type, name) {
 			tip = name + ' is saying now.'
 			title = 'Message Notify';
 			break;
+        case 'broadcast':
+            tip = '系统通知 恭喜逗比升级了';
+            title = '系统消息';
+            break;
 	}
 	var pop=new Pop(title, tip);
 };
@@ -190,9 +194,16 @@ $(document).ready(function() {
         console.log('====onReceive data:',data);
 		addMessage(data.from, data.target, data.msg);
 		$("#chatHistory").show();
-		if(data.from !== username)
-			tip('message', data.from);
+		if(data.from !== username){
+            tip('message', data.from);
+        }
 	});
+
+    //broadcast message to all users
+    pomelo.on('onBroadcast',function(data){
+        var message = data.msg;
+        tip('broadcast', '系统信息');
+    });
 
 	//update user list
 	pomelo.on('onAdd', function(data) {

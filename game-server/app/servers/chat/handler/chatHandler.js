@@ -1,6 +1,11 @@
 var chatRemote = require('../remote/chatRemote');
 var MAX_MSG_LENGTH = 30;//发送消息最长字数限制
 
+//状态码
+var LENGTH_ILLEGAL = 10;//长度不合法
+var SEND_FAIL = 20;//私聊发送消息失败
+var ONLINE = 30;//不在线
+
 module.exports = function(app) {
 	return new Handler(app);
 };
@@ -50,7 +55,7 @@ handler.send = function(msg, session, next) {
     console.log('msgLength--:',msgLength);
     if(msgLength > MAX_MSG_LENGTH){
         next(null,{
-            status:10//消息字数超过规定限制
+            status:LENGTH_ILLEGAL//消息字数超过规定限制
         });
         return;
     }else{
@@ -70,7 +75,7 @@ handler.send = function(msg, session, next) {
             channel.pushMessage('onReceive', param,[],function(err){
                 if(err){
                     next(null,{
-                        status:20//私聊发送消息失败
+                        status:SEND_FAIL//私聊发送消息失败
                     });
                     return;
                 }
@@ -91,20 +96,10 @@ handler.send = function(msg, session, next) {
                     uid: tuid,
                     sid: tsid
                 }]);
-                //系统广播
-                channelService.broadcast('connector','onReceive',param,{binded:true},function(err){
-                    console.log('err:',err);
-                    if(err){
-                        next(null,{
-                            status:40//系统广播消息失败
-                        });
-                    }
-                });
-
             }else{
                 console.log('对方不在线对方不在线对方不在线对方不在线对方不在线');
                 next(null,{
-                    status:30//对方不在线
+                    status:ONLINE//对方不在线
                 });
                 return;
             }
@@ -121,9 +116,36 @@ handler.online = function(msg,session,next){
     var tuid = uid+"*"+rid;
     var online = channel.getMember(tuid);
     console.log('==============online');
-    if(!online){
+    if(!!online){
+        //用户在线 则将角色ID返回给客户端
+        next(null,{
+            userId:uid
+        });
+    }else{
+        //否则返回错误状态
         next(null,{
             status:30
         });
     }
+};
+
+//系统广播消息
+handler.broadcast = function(msg,session,next){
+    var self = this;
+    var channelService = self.app.get('channelService');
+
+    var param = {
+        msg: content,
+        from: username,
+        target: msg.target
+    };
+    //系统广播
+    channelService.broadcast('connector','onBroadcast',param,{binded:true},function(err){
+        console.log('err:',err);
+        if(err){
+            next(null,{
+                status:40//系统广播消息失败
+            });
+        }
+    });
 };
